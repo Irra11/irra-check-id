@@ -48,8 +48,8 @@ def check_ml():
 # -----------------------------
 # FREE FIRE CHECK (Improved)
 # -----------------------------
-# -----------------------------
-# FREE FIRE SINGAPORE - MULTI-SOURCE
+## -----------------------------
+# FREE FIRE SINGAPORE - PRO CHECK
 # -----------------------------
 @app.route("/ff", methods=["GET"])
 def check_ff_nickname():
@@ -57,27 +57,36 @@ def check_ff_nickname():
     if not user_id:
         return jsonify({"status": False, "message": "Missing ID"}), 400
 
-    # These are the 3 most reliable ways to check SG IDs
+    # These endpoints are currently the most stable for SG/Global
     sources = [
-        # Source 1: Dedicated Singapore Path
-        {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}},
-        
-        # Source 2: Regional Parameter Path
-        {"url": "https://api.isan.eu.org/nickname/ff", "params": {"id": user_id, "region": "sg"}},
-        
-        # Source 3: Global/Other API
-        {"url": "https://api.v8project.my.id/api/v1/game/ff", "params": {"id": user_id}}
+        # Source 1: The direct Singapore Merchant path
+        "https://api.isan.eu.org/nickname/ffsg",
+        # Source 2: The standard path with region force
+        "https://api.isan.eu.org/nickname/ff",
+        # Source 3: Backup Global Checker
+        "https://sandipanmaji.tech/ff/api.php"
     ]
 
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    # REAL MOBILE HEADERS (Helps bypass "Not Found" errors)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+        "Accept": "application/json",
+        "Referer": "https://codashop.com/"
+    }
 
-    for source in sources:
+    for url in sources:
         try:
-            res = requests.get(source["url"], params=source["params"], timeout=7, headers=headers)
+            # Prepare params based on the URL type
+            params = {"id": user_id}
+            if "region" not in url and url == "https://api.isan.eu.org/nickname/ff":
+                params["region"] = "sg"
+
+            res = requests.get(url, params=params, timeout=8, headers=headers)
+            
             if res.status_code == 200:
                 data = res.json()
                 
-                # Check all possible nickname locations in the JSON
+                # Check all possible locations for the nickname
                 nickname = (
                     data.get("nickname") or 
                     data.get("name") or 
@@ -85,14 +94,19 @@ def check_ff_nickname():
                     (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname")
                 )
 
-                if nickname and "not found" not in nickname.lower() and "invalid" not in nickname.lower():
-                    return jsonify({"status": True, "nickname": nickname})
+                # Validate the nickname isn't an error message
+                if nickname and len(nickname) > 1:
+                    low_nick = nickname.lower()
+                    if "not found" not in low_nick and "invalid" not in low_nick and "error" not in low_nick:
+                        return jsonify({
+                            "status": True,
+                            "nickname": nickname,
+                            "source": "verified"
+                        })
         except Exception as e:
-            print(f"Source {source['url']} failed: {e}")
-            continue # Try the next source in the list
+            continue
 
-    # If all 3 sources fail to find a name
     return jsonify({
         "status": False, 
-        "message": "Player ID not found on Singapore server"
+        "message": "ID 2757260223 not found. Make sure it's the Singapore Server."
     }), 404
