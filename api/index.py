@@ -48,9 +48,6 @@ def check_ml():
 # -----------------------------
 # FREE FIRE CHECK (Improved)
 # -----------------------------
-# -----------------------------
-# FREE FIRE SINGAPORE CHECK
-# -----------------------------
 @app.route("/ff", methods=["GET"])
 def check_ff_nickname():
     user_id = request.args.get("id")
@@ -58,34 +55,16 @@ def check_ff_nickname():
         return jsonify({"status": False, "message": "Missing ID"}), 400
 
     try:
-        # URL for the Singapore region
-        url = "https://api.isan.eu.org/nickname/ff"
-        
-        # We add region='sg' to force the Singapore server check
-        params = {
-            "id": user_id,
-            "region": "sg" 
-        }
-        
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-
-        res = requests.get(url, params=params, timeout=10, headers=headers)
+        # Alternative API: Sandipan Maji
+        url = f"https://sandipanmaji.tech/ff/api.php"
+        res = requests.get(url, params={"id": user_id}, timeout=10)
         data = res.json()
+        
+        # This API usually returns {"name": "PLAYER_NAME"}
+        nickname = data.get("name")
 
-        # The API usually returns 'name' or 'nickname'
-        nickname = data.get("name") or data.get("nickname")
-
-        if nickname:
-            return jsonify({
-                "status": True,
-                "nickname": nickname
-            })
-        else:
-            # If still not found, return the API's own message
-            error_msg = data.get("message") or "ID not found on Singapore server"
-            return jsonify({"status": False, "message": error_msg}), 404
-
+        if nickname and nickname != "Invalid ID":
+            return jsonify({"status": True, "nickname": nickname})
+        return jsonify({"status": False, "message": "ID not found"}), 404
     except Exception as e:
-        return jsonify({"status": False, "message": f"Server Error: {str(e)}"}), 500
+        return jsonify({"status": False, "message": "Secondary API error"}), 500
