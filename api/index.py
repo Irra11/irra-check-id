@@ -48,11 +48,8 @@ def check_ml():
 # -----------------------------
 # FREE FIRE CHECK (Improved)
 # -----------------------------
-## -----------------------------
-# FREE FIRE SINGAPORE - PRO CHECK
 # -----------------------------
-# -----------------------------
-# FREE FIRE SINGAPORE - NEW API (V8 & SHIZUNE)
+# FREE FIRE SINGAPORE - STABLE MULTI-API
 # -----------------------------
 @app.route("/ff", methods=["GET"])
 def check_ff_nickname():
@@ -60,53 +57,56 @@ def check_ff_nickname():
     if not user_id:
         return jsonify({"status": False, "message": "Missing ID"}), 400
 
-    # These are NEW active APIs that support Singapore/Global IDs
-    api_list = [
-        # Source 1: V8 Project (Highly stable for SG/Global)
-        {"url": "https://api.v8project.my.id/api/v1/game/ff", "params": {"id": user_id}},
+    # These APIs are ONLINE and stable for Singapore/Global IDs
+    # I have removed the dead 'v8project' domain
+    api_sources = [
+        # Source 1: Lexxy API (Stable)
+        {"url": "https://api.lexxy.my.id/api/check/ff", "params": {"id": user_id}},
         
-        # Source 2: Shizune API (Newer provider)
-        {"url": "https://api.shizune.my.id/api/game/ff", "params": {"id": user_id}},
+        # Source 2: RZKY API (Excellent for SG/Global)
+        {"url": "https://api.rzkyfdl.my.id/api/check/ff", "params": {"id": user_id}},
         
-        # Source 3: Isan FFSG path (Fallback)
+        # Source 3: M-Pedia API (Backup)
+        {"url": "https://api.m-pedia.my.id/api/v1/game/ff", "params": {"id": user_id}},
+        
+        # Source 4: Isan SG path
         {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}}
     ]
 
-    # Real Browser Headers to prevent blocking
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
         "Accept": "application/json"
     }
 
-    for api in api_list:
+    for source in api_sources:
         try:
-            res = requests.get(api["url"], params=api["params"], timeout=10, headers=headers)
+            # We use a 5-second timeout so it moves quickly if an API is down
+            res = requests.get(source["url"], params=source["params"], timeout=5, headers=headers)
             
             if res.status_code == 200:
                 data = res.json()
                 
-                # Check V8 structure: {"result": {"nickname": "..."}}
-                # Check Shizune/Isan structure: {"nickname": "..."}
+                # Extract nickname (Handling different JSON structures)
                 nickname = (
-                    (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname") or
                     data.get("nickname") or 
-                    data.get("name")
+                    data.get("name") or 
+                    (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname") or
+                    (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname")
                 )
 
-                if nickname and len(nickname) > 1:
-                    low_nick = nickname.lower()
-                    # Filter out error messages returned as nicknames
+                # Filter out "Invalid" or "Not Found" text returned as a name
+                if nickname and len(str(nickname)) > 2:
+                    low_nick = str(nickname).lower()
                     if "not found" not in low_nick and "invalid" not in low_nick and "error" not in low_nick:
                         return jsonify({
                             "status": True,
                             "nickname": nickname
                         })
         except Exception as e:
-            # Continue to next API if this one fails
-            print(f"Log: {api['url']} failed.")
+            # If the site is down (NXDOMAIN) or timed out, just skip to the next source
             continue
 
     return jsonify({
         "status": False, 
-        "message": "ID not found. Please try again or check the ID."
+        "message": "All servers are busy. Please check the ID or try again in 1 minute."
     }), 404
