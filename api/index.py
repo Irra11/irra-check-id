@@ -5,12 +5,47 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
+# -----------------------------
+# 2026 PRO HEADERS (Mimics UniPin Singapore)
+# -----------------------------
+SG_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+    "Referer": "https://www.unipin.com/sg/garena/free-fire",
+    "Origin": "https://www.unipin.com",
+    "Accept": "application/json"
+}
+
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": True, "message": "IrraTopup FF-SG API 2026.3 Active"})
+    return jsonify({
+        "status": True,
+        "message": "IrraTopup 2026 API Gateway Active 🚀",
+        "endpoints": ["/ml", "/ff"]
+    })
 
 # -----------------------------
-# FREE FIRE SINGAPORE - 2026.3 FIX
+# MLBB CHECKER
+# -----------------------------
+@app.route("/ml", methods=["GET"])
+def check_ml():
+    user_id = request.args.get("id")
+    zone_id = request.args.get("zone")
+    if not user_id or not zone_id:
+        return jsonify({"status": False, "message": "Missing ID or Zone"}), 400
+
+    try:
+        url = "https://api.isan.eu.org/nickname/ml"
+        res = requests.get(url, params={"id": user_id, "server": zone_id}, timeout=10)
+        data = res.json()
+        nickname = data.get("nickname") or data.get("name")
+        if nickname:
+            return jsonify({"status": True, "nickname": nickname})
+        return jsonify({"status": False, "message": "MLBB User not found"}), 404
+    except:
+        return jsonify({"status": False, "message": "MLBB Service Offline"}), 500
+
+# -----------------------------
+# FREE FIRE SINGAPORE CHECKER (2026 ANTI-BLIND)
 # -----------------------------
 @app.route("/ff", methods=["GET"])
 def check_ff_nickname():
@@ -18,69 +53,58 @@ def check_ff_nickname():
     if not user_id:
         return jsonify({"status": False, "message": "Missing ID"}), 400
 
-    # These are the CURRENT working APIs for Singapore IDs in 2026
+    # These sources are prioritized for the Singapore (SG) Database
     api_sources = [
-        # Source 1: Paxsenix Biz (Updated Gateway - Currently very strong for SG)
-        {"url": "https://api.paxsenix.biz.id/game/ff", "params": {"id": user_id}},
+        # Source 1: Paxsenix Biz (Strongest 2026 SG gateway)
+        {"url": "https://api.paxsenix.biz.id/game/ff", "params": {"id": user_id, "region": "sg"}},
         
-        # Source 2: Hennndra Merchant Scraper
+        # Source 2: Hennndra (Reliable Merchant Scraper)
         {"url": "https://api.hennndra.my.id/api/game/ff", "params": {"id": user_id}},
         
-        # Source 3: Isan FFSG Dedicated Path
-        {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}},
+        # Source 3: Kenz API (Stable Singapore provider)
+        {"url": "https://api.kenz.my.id/api/game/ff", "params": {"id": user_id}},
         
-        # Source 4: Shizune Pro
-        {"url": "https://api.shizune.my.id/api/game/ff", "params": {"id": user_id}}
+        # Source 4: Dedicated SG Route
+        {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}}
     ]
-
-    # Mobile iPhone 17 Headers (Bypasses many Vercel/AWS IP blocks)
-    headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1",
-        "Referer": "https://www.codashop.com/en-sg/free-fire",
-        "Accept": "application/json"
-    }
 
     for source in api_sources:
         try:
-            # 8-second timeout: SG server is under heavy protection in 2026
-            res = requests.get(source["url"], params=source["params"], timeout=8, headers=headers)
+            # 8-second timeout: SG gateways are under high load in 2026
+            res = requests.get(source["url"], params=source["params"], timeout=8, headers=SG_HEADERS)
             
             if res.status_code == 200:
                 data = res.json()
                 
-                # Check for various nickname keys
-                # We also check for 'player_name' which some 2026 APIs started using
+                # Check all common 2026 nickname locations
                 nickname = (
                     data.get("nickname") or 
                     data.get("name") or 
-                    (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname") or
-                    (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname")
+                    (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname") or
+                    (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname")
                 )
 
-                # --- THE 2026 ANTI-BLIND LOGIC ---
-                # 1. Nickname must exist
-                # 2. Nickname MUST NOT be equal to the User ID (Prevents "Blind Success")
-                # 3. Nickname MUST NOT be a number (Real nicknames aren't just IDs)
-                if nickname and str(nickname).strip():
-                    nick_str = str(nickname).strip()
+                # --- 2026 ANTI-BLIND VALIDATION ---
+                # 1. Ensure nickname is not empty
+                # 2. Ensure nickname is not just the ID (Garena hides names by sending the ID instead)
+                if nickname and str(nickname).strip() and str(nickname) != str(user_id):
+                    name_clean = str(nickname).strip()
                     
-                    if nick_str != str(user_id) and not nick_str.isdigit():
-                        low_nick = nick_str.lower()
-                        # Filter out error text
-                        bad_words = ["not found", "invalid", "error", "null", "busy", "limit", "failed"]
-                        if not any(word in low_nick for word in bad_words):
-                            return jsonify({
-                                "status": True,
-                                "nickname": nick_str,
-                                "id": user_id,
-                                "server": "Singapore (SG)"
-                            })
+                    # Filter out error text from APIs
+                    bad_words = ["not found", "invalid", "error", "null", "busy", "limit", "failed", "hidden"]
+                    if not any(word in name_clean.lower() for word in bad_words):
+                        return jsonify({
+                            "status": True,
+                            "nickname": name_clean,
+                            "id": user_id,
+                            "server": "Singapore"
+                        })
         except Exception:
-            continue
+            continue # Try next API immediately
 
     return jsonify({
         "status": False, 
-        "message": "SG Server Busy (Name Hidden). Try again in 10 seconds."
+        "message": "Name hidden by SG server security. Please try again in 5 minutes."
     }), 404
 
 if __name__ == "__main__":
