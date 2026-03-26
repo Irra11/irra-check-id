@@ -46,23 +46,50 @@ def check_ml():
 
 
 # -----------------------------
-# FREE FIRE CHECK
+# FREE FIRE CHECK (Improved)
 # -----------------------------
 @app.route("/ff", methods=["GET"])
 def check_ff_nickname():
     user_id = request.args.get("id")
     if not user_id:
         return jsonify({"status": False, "message": "Missing ID"}), 400
+
     try:
-        url = f"https://api.isan.eu.org/nickname/ff"
-        res = requests.get(url, params={"id": user_id}, timeout=5, headers={"User-Agent":"Mozilla/5.0"})
+        # 1. Use a more modern browser User-Agent to avoid being blocked
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        }
+        url = "https://api.isan.eu.org/nickname/ff"
+        
+        # 2. Call the API with an 8-second timeout
+        res = requests.get(url, params={"id": user_id}, timeout=8, headers=headers)
+        
+        # If API gives error status
+        if res.status_code != 200:
+            return jsonify({"status": False, "message": f"API Error {res.status_code}"}), res.status_code
+
         data = res.json()
-        nickname = data.get("nickname") or data.get("name") or (data.get("data") or {}).get("nickname")
+
+        # 3. Robust Nickname Picker (Checks all possible keys)
+        # Some versions return 'name', some 'nickname', some 'data': {'nickname': ...}
+        nickname = (
+            data.get("nickname") or 
+            data.get("name") or 
+            (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname") or
+            (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname")
+        )
+
         if nickname:
-            return jsonify({"status": True, "nickname": nickname})
+            return jsonify({
+                "status": True, 
+                "nickname": nickname
+            })
         else:
-            return jsonify({"status": False, "message": "Nickname not found (API failed or UID invalid)"}), 404
+            # Helpful for debugging in Vercel logs if it fails
+            print(f"FF Debug: API returned structure: {data}")
+            return jsonify({"status": False, "message": "Player ID not found"}), 404
+
     except requests.exceptions.Timeout:
-        return jsonify({"status": False, "message": "FF API timed out"}), 504
+        return jsonify({"status": False, "message": "Connection timed out"}), 504
     except Exception as e:
-        return jsonify({"status": False, "message": f"FF API error: {str(e)}"}), 500
+        return jsonify({"status": False, "message": f"Server Error: {str(e)}"}), 500
