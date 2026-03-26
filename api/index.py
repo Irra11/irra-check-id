@@ -49,41 +49,20 @@ def check_ml():
 # FREE FIRE CHECK
 # -----------------------------
 @app.route("/ff", methods=["GET"])
-def check_ff():
+def check_ff_nickname():
     user_id = request.args.get("id")
-
     if not user_id:
-        return jsonify({"status": False}), 400
-
-   apis = [
-  f"https://api.xyroinee.xyz/api/ff-nickname?id={user_id}"
-f"https://hadi-api.xyz/api/nickname/ff?id={user_id}"
-]
-
-    for api in apis:
-        try:
-            res = requests.get(api, timeout=8)
-            data = res.json()
-
-            print("TRY:", api, "=>", data)
-
-            nickname = (
-                data.get("nickname") or
-                data.get("name") or
-                (data.get("data") or {}).get("nickname")
-            )
-
-            if nickname:
-                return jsonify({
-                    "status": True,
-                    "nickname": nickname
-                })
-
-        except Exception as e:
-            print("ERROR:", e)
-            continue
-
-    return jsonify({
-        "status": False,
-        "message": "Nickname not found (API failed or UID invalid)"
-    })
+        return jsonify({"status": False, "message": "Missing ID"}), 400
+    try:
+        url = f"https://api.isan.eu.org/nickname/ff"
+        res = requests.get(url, params={"id": user_id}, timeout=5, headers={"User-Agent":"Mozilla/5.0"})
+        data = res.json()
+        nickname = data.get("nickname") or data.get("name") or (data.get("data") or {}).get("nickname")
+        if nickname:
+            return jsonify({"status": True, "nickname": nickname})
+        else:
+            return jsonify({"status": False, "message": "Nickname not found (API failed or UID invalid)"}), 404
+    except requests.exceptions.Timeout:
+        return jsonify({"status": False, "message": "FF API timed out"}), 504
+    except Exception as e:
+        return jsonify({"status": False, "message": f"FF API error: {str(e)}"}), 500
