@@ -51,62 +51,62 @@ def check_ml():
 ## -----------------------------
 # FREE FIRE SINGAPORE - PRO CHECK
 # -----------------------------
+# -----------------------------
+# FREE FIRE SINGAPORE - NEW API (V8 & SHIZUNE)
+# -----------------------------
 @app.route("/ff", methods=["GET"])
 def check_ff_nickname():
     user_id = request.args.get("id")
     if not user_id:
         return jsonify({"status": False, "message": "Missing ID"}), 400
 
-    # These endpoints are currently the most stable for SG/Global
-    sources = [
-        # Source 1: The direct Singapore Merchant path
-        "https://api.isan.eu.org/nickname/ffsg",
-        # Source 2: The standard path with region force
-        "https://api.isan.eu.org/nickname/ff",
-        # Source 3: Backup Global Checker
-        "https://sandipanmaji.tech/ff/api.php"
+    # These are NEW active APIs that support Singapore/Global IDs
+    api_list = [
+        # Source 1: V8 Project (Highly stable for SG/Global)
+        {"url": "https://api.v8project.my.id/api/v1/game/ff", "params": {"id": user_id}},
+        
+        # Source 2: Shizune API (Newer provider)
+        {"url": "https://api.shizune.my.id/api/game/ff", "params": {"id": user_id}},
+        
+        # Source 3: Isan FFSG path (Fallback)
+        {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}}
     ]
 
-    # REAL MOBILE HEADERS (Helps bypass "Not Found" errors)
+    # Real Browser Headers to prevent blocking
     headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
-        "Accept": "application/json",
-        "Referer": "https://codashop.com/"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json"
     }
 
-    for url in sources:
+    for api in api_list:
         try:
-            # Prepare params based on the URL type
-            params = {"id": user_id}
-            if "region" not in url and url == "https://api.isan.eu.org/nickname/ff":
-                params["region"] = "sg"
-
-            res = requests.get(url, params=params, timeout=8, headers=headers)
+            res = requests.get(api["url"], params=api["params"], timeout=10, headers=headers)
             
             if res.status_code == 200:
                 data = res.json()
                 
-                # Check all possible locations for the nickname
+                # Check V8 structure: {"result": {"nickname": "..."}}
+                # Check Shizune/Isan structure: {"nickname": "..."}
                 nickname = (
-                    data.get("nickname") or 
-                    data.get("name") or 
                     (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname") or
-                    (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname")
+                    data.get("nickname") or 
+                    data.get("name")
                 )
 
-                # Validate the nickname isn't an error message
                 if nickname and len(nickname) > 1:
                     low_nick = nickname.lower()
+                    # Filter out error messages returned as nicknames
                     if "not found" not in low_nick and "invalid" not in low_nick and "error" not in low_nick:
                         return jsonify({
                             "status": True,
-                            "nickname": nickname,
-                            "source": "verified"
+                            "nickname": nickname
                         })
         except Exception as e:
+            # Continue to next API if this one fails
+            print(f"Log: {api['url']} failed.")
             continue
 
     return jsonify({
         "status": False, 
-        "message": "ID 2757260223 not found. Make sure it's the Singapore Server."
+        "message": "ID not found. Please try again or check the ID."
     }), 404
