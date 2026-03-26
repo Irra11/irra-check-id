@@ -51,23 +51,39 @@ def check_ml():
 @app.route("/ff", methods=["GET"])
 def check_ff():
     user_id = request.args.get("id")
+
     if not user_id:
-        return jsonify({"status": False, "message": "Missing ID"}), 400
+        return jsonify({"status": False}), 400
 
     apis = [
-        f"https://api.isan.eu.org/nickname/ff?id={user_id}"
+        f"https://api.isan.eu.org/nickname/ff?id={user_id}",
+        f"https://hadi-api.xyz/api/nickname/ff?id={user_id}"
     ]
 
     for api in apis:
         try:
-            res = requests.get(api, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
-            if res.status_code != 200:
-                continue
+            res = requests.get(api, timeout=8)
             data = res.json()
-            nickname = data.get("nickname") or data.get("name") or (data.get("data") or {}).get("nickname")
-            if nickname and str(nickname).strip() != "":
-                return jsonify({"status": True, "nickname": nickname})
-        except:
+
+            print("TRY:", api, "=>", data)
+
+            nickname = (
+                data.get("nickname") or
+                data.get("name") or
+                (data.get("data") or {}).get("nickname")
+            )
+
+            if nickname:
+                return jsonify({
+                    "status": True,
+                    "nickname": nickname
+                })
+
+        except Exception as e:
+            print("ERROR:", e)
             continue
 
-    return jsonify({"status": False, "message": "Nickname not found"}), 404
+    return jsonify({
+        "status": False,
+        "message": "Nickname not found (API failed or UID invalid)"
+    })
