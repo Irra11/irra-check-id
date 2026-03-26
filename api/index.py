@@ -56,9 +56,8 @@ def check_ff():
         return jsonify({"status": False}), 400
 
    apis = [
-    f"https://api.isan.eu.org/nickname/ff?id={user_id}",
-    f"https://hadi-api.xyz/api/nickname/ff?id={user_id}",
-    f"https://api.xyroinee.xyz/api/ff-nickname?id={user_id}"
+  f"https://api.xyroinee.xyz/api/ff-nickname?id={user_id}"
+f"https://hadi-api.xyz/api/nickname/ff?id={user_id}"
 ]
 
     for api in apis:
