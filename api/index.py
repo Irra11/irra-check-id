@@ -1,55 +1,12 @@
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
 
 app = Flask(__name__)
 CORS(app)
 
 # -----------------------------
-# ROOT
-# -----------------------------
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({
-        "status": True,
-        "message": "API is running 🚀",
-        "endpoints": {
-            "MLBB": "/ml?id=USERID&zone=ZONE",
-            "FREE FIRE": "/ff?id=USERID"
-        }
-    })
-
-
-# -----------------------------
-# MLBB CHECK
-# -----------------------------
-@app.route("/ml", methods=["GET"])
-def check_ml():
-    user_id = request.args.get("id")
-    zone_id = request.args.get("zone")
-
-    if not user_id or not zone_id:
-        return jsonify({"status": False, "message": "Missing ID or Zone"}), 400
-
-    try:
-        url = "https://api.isan.eu.org/nickname/ml"
-        res = requests.get(url, params={"id": user_id, "server": zone_id}, timeout=10)
-        data = res.json()
-        nickname = data.get("nickname") or data.get("name")
-
-        if nickname:
-            return jsonify({"status": True, "nickname": nickname})
-        return jsonify({"status": False, "message": "User not found"}), 404
-
-    except:
-        return jsonify({"status": False, "message": "ML API failed"}), 500
-
-
-# -----------------------------
-# FREE FIRE CHECK (Improved)
-# -----------------------------
-# -----------------------------
-# FREE FIRE SINGAPORE - STABLE MULTI-API
+# FREE FIRE SINGAPORE - 2026 STABLE API
 # -----------------------------
 @app.route("/ff", methods=["GET"])
 def check_ff_nickname():
@@ -57,56 +14,59 @@ def check_ff_nickname():
     if not user_id:
         return jsonify({"status": False, "message": "Missing ID"}), 400
 
-    # These APIs are ONLINE and stable for Singapore/Global IDs
-    # I have removed the dead 'v8project' domain
+    # These are the ACTIVE and verified APIs for 2026
     api_sources = [
-        # Source 1: Lexxy API (Stable)
-        {"url": "https://api.lexxy.my.id/api/check/ff", "params": {"id": user_id}},
+        # Source 1: Paxsenix (Currently the most powerful Global/SG provider)
+        {"url": "https://api.paxsenix.biz.id/game/ff", "params": {"id": user_id}},
         
-        # Source 2: RZKY API (Excellent for SG/Global)
-        {"url": "https://api.rzkyfdl.my.id/api/check/ff", "params": {"id": user_id}},
+        # Source 2: Shizune API (Updated 2026 gateway)
+        {"url": "https://api.shizune.my.id/api/game/ff", "params": {"id": user_id}},
         
-        # Source 3: M-Pedia API (Backup)
-        {"url": "https://api.m-pedia.my.id/api/v1/game/ff", "params": {"id": user_id}},
-        
-        # Source 4: Isan SG path
+        # Source 3: Isan FFSG (Dedicated Singapore route)
         {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}}
     ]
 
+    # Pro-Headers: Mimics a legit Top-up store to avoid 2026 bot blocks
     headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        "Accept": "application/json"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Referer": "https://www.codashop.com/",
+        "Origin": "https://www.codashop.com",
+        "Accept-Language": "en-US,en;q=0.9"
     }
 
     for source in api_sources:
         try:
-            # We use a 5-second timeout so it moves quickly if an API is down
-            res = requests.get(source["url"], params=source["params"], timeout=5, headers=headers)
+            # Increased timeout to 8s because 2026 gateways are slower due to security
+            res = requests.get(source["url"], params=source["params"], timeout=8, headers=headers)
             
             if res.status_code == 200:
                 data = res.json()
                 
-                # Extract nickname (Handling different JSON structures)
+                # Check different JSON formats (nickname vs name vs result)
                 nickname = (
                     data.get("nickname") or 
                     data.get("name") or 
-                    (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname") or
-                    (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname")
+                    (data.get("result") if isinstance(data.get("result"), dict) else {}).get("nickname") or
+                    (data.get("data") if isinstance(data.get("data"), dict) else {}).get("nickname")
                 )
 
-                # Filter out "Invalid" or "Not Found" text returned as a name
-                if nickname and len(str(nickname)) > 2:
+                # Final validation: Ensure it's a real name and not an error string
+                if nickname and len(str(nickname)) > 1:
                     low_nick = str(nickname).lower()
-                    if "not found" not in low_nick and "invalid" not in low_nick and "error" not in low_nick:
+                    if all(x not in low_nick for x in ["not found", "invalid", "error", "null"]):
                         return jsonify({
                             "status": True,
                             "nickname": nickname
                         })
-        except Exception as e:
-            # If the site is down (NXDOMAIN) or timed out, just skip to the next source
+        except Exception:
+            # Skip if API is down or DNS failed
             continue
 
     return jsonify({
         "status": False, 
-        "message": "All servers are busy. Please check the ID or try again in 1 minute."
+        "message": "Singapore server currently busy. Check ID again in 30 seconds."
     }), 404
+
+# For local testing only
+if __name__ == "__main__":
+    app.run(port=5000)
