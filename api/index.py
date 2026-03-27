@@ -58,14 +58,14 @@ def check_ff_nickname():
         # Source 1: Paxsenix Biz (Strongest 2026 SG gateway)
         {"url": "https://api.paxsenix.biz.id/game/ff", "params": {"id": user_id, "region": "sg"}},
         
-        # Source 2: Hennndra (Reliable Merchant Scraper)
-        {"url": "https://api.hennndra.my.id/api/game/ff", "params": {"id": user_id}},
+        # # Source 2: Hennndra (Reliable Merchant Scraper)
+        # {"url": "https://api.hennndra.my.id/api/game/ff", "params": {"id": user_id}},
         
-        # Source 3: Kenz API (Stable Singapore provider)
-        {"url": "https://api.kenz.my.id/api/game/ff", "params": {"id": user_id}},
+        # # Source 3: Kenz API (Stable Singapore provider)
+        # {"url": "https://api.kenz.my.id/api/game/ff", "params": {"id": user_id}},
         
-        # Source 4: Dedicated SG Route
-        {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}}
+        # # Source 4: Dedicated SG Route
+        # {"url": "https://api.isan.eu.org/nickname/ffsg", "params": {"id": user_id}}
     ]
 
     for source in api_sources:
