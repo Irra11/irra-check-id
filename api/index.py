@@ -56,10 +56,10 @@ def check_ff_nickname():
     # These sources are prioritized for the Singapore (SG) Database
     api_sources = [
         # Source 1: Paxsenix Biz (Strongest 2026 SG gateway)
-        {"url": "https://api.paxsenix.biz.id/game/ff", "params": {"id": user_id, "region": "sg"}},
+        # {"url": "https://api.paxsenix.biz.id/game/ff", "params": {"id": user_id, "region": "sg"}},
         
-        # # Source 2: Hennndra (Reliable Merchant Scraper)
-        # {"url": "https://api.hennndra.my.id/api/game/ff", "params": {"id": user_id}},
+        # Source 2: Hennndra (Reliable Merchant Scraper)
+        {"url": "https://api.hennndra.my.id/api/game/ff", "params": {"id": user_id}},
         
         # # Source 3: Kenz API (Stable Singapore provider)
         # {"url": "https://api.kenz.my.id/api/game/ff", "params": {"id": user_id}},
