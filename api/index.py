@@ -9,38 +9,23 @@ CORS(app)
 def home():
     return jsonify({
         "status": True,
-        "message": "MLBB Cambodia Checker 🇰🇭",
-        "endpoint": "/ml?id=USERID&zone=ZONEID"
+        "message": "MLBB Checker Working ✅",
+        "example": "/ml?id=123456&zone=1234"
     })
 
 # -----------------------------
-# CAMBODIA FILTER (SEA ZONES)
+# MLBB CHECKER (FIXED)
 # -----------------------------
-# These are common SEA zones (KH, VN, TH, ID, MY, PH mixed)
-# You can adjust this list
-ALLOWED_ZONES = [
-    "4000","5000","6000","7000","8000","9000",
-    "1000","2000","3000"
-]
-
 @app.route("/ml", methods=["GET"])
 def check_ml():
     user_id = request.args.get("id")
     zone_id = request.args.get("zone")
 
-    # ❌ Missing input
     if not user_id or not zone_id:
         return jsonify({
             "status": False,
             "message": "Missing ID or Zone"
         }), 400
-
-    # ❌ Block non-Cambodia zones (simulation)
-    if zone_id not in ALLOWED_ZONES:
-        return jsonify({
-            "status": False,
-            "message": "Only Cambodia/SEA accounts allowed"
-        }), 403
 
     try:
         url = "https://api.isan.eu.org/nickname/ml"
@@ -48,25 +33,33 @@ def check_ml():
         res = requests.get(url, params={
             "id": user_id,
             "server": zone_id
-        }, timeout=6)
+        }, timeout=8)
+
+        # 🔥 IMPORTANT: check response first
+        if res.status_code != 200:
+            return jsonify({
+                "status": False,
+                "message": "API error"
+            }), 500
 
         data = res.json()
 
+        # DEBUG (optional)
+        print("API RESPONSE:", data)
+
         nickname = data.get("nickname") or data.get("name")
 
-        # ✅ VALIDATION
-        if nickname and str(nickname) != str(user_id):
+        if nickname and str(nickname).strip() and str(nickname) != str(user_id):
             return jsonify({
                 "status": True,
                 "nickname": nickname.strip(),
                 "id": user_id,
-                "zone": zone_id,
-                "region": "Cambodia"
+                "zone": zone_id
             })
 
         return jsonify({
             "status": False,
-            "message": "Player not found"
+            "message": "Player not found or wrong zone"
         }), 404
 
     except requests.exceptions.Timeout:
@@ -75,10 +68,10 @@ def check_ml():
             "message": "API timeout"
         }), 504
 
-    except Exception:
+    except Exception as e:
         return jsonify({
             "status": False,
-            "message": "Service error"
+            "message": str(e)
         }), 500
 
 
